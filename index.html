@@ -16,14 +16,7 @@
       <h1>What does a <em>confidence level</em> actually mean?</h1>
       <p>Each sample gives a different interval. The confidence level is the <strong>long-run percentage of intervals that capture&nbsp;<i>p</i></strong>.</p>
     </div>
-    <div class="formula-chip" aria-label="Interval formula">
-      <span class="f">
-        <span class="hat">p&#770;</span>
-        <span class="op">&plusmn;</span>
-        <i>z</i><sup>&lowast;</sup>
-        <span class="sqrt"><span class="radical">&radic;</span><span class="rad"><span class="frac"><span class="num">p&#770;(1&minus;p&#770;)</span><span class="den">n</span></span></span></span>
-      </span>
-    </div>
+    <div class="formula-chip" id="formula-chip" aria-label="Confidence interval formula"></div>
   </header>
 
   <main class="grid">
@@ -65,8 +58,7 @@
         </div>
 
         <div class="readout">
-          <span><i>z</i><sup>&lowast;</sup> = <b id="zstar-out">1.9600</b></span>
-          <span>SE &asymp; <b id="se-out">0.0693</b></span>
+          <span>critical value <i>z</i> = <b id="zstar-out">1.9600</b></span>
         </div>
         <p class="note">Changing a setting clears the samples so every interval on the plot uses the same <i>n</i> and <i>C</i>.</p>
       </section>
@@ -176,6 +168,7 @@
       <button id="btn-skip" class="btn btn-tiny" type="button">Skip &rarr;</button>
     </header>
     <div class="steps" id="steps"></div>
+    <footer class="sheet-foot" id="sheet-foot">Click anywhere to add this interval to the plot &rarr;</footer>
   </div>
 </div>
 

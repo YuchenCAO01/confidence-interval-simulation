@@ -63,19 +63,57 @@ button{font-family:inherit}
 
 .formula-chip{
   flex:none;background:var(--card);border:1px solid var(--line);
-  border-radius:999px;padding:9px 20px;box-shadow:var(--shadow);color:var(--ink);
+  border-radius:16px;padding:11px 22px;box-shadow:var(--shadow);color:var(--ink);
+}
+.formula-chip .mth{font-size:1rem}
+
+/* ---------------- maths typesetting ----------------
+   The radical and the parentheses are SVG paths stretched to the height of
+   whatever they wrap (non-scaling-stroke keeps the line weight constant), so
+   they always fit the expression instead of being a fixed-size glyph. */
+.mth{
+  display:inline-flex;align-items:center;
+  font-family:var(--serif);font-size:1.04rem;line-height:1.1;white-space:nowrap;
+}
+.mth .mn{
+  font-family:var(--mono);font-size:.84em;font-variant-numeric:tabular-nums;letter-spacing:-.015em;
+}
+.mth .sg{padding:0 .3em;color:var(--ink-2)}
+.mth .cm{padding:0 .34em 0 .1em;color:var(--ink-2)}
+.mth .eqs{padding:0 .34em;color:var(--muted)}
+
+/* p with a hat that actually sits over the p */
+.ph{position:relative;display:inline-block;line-height:1;font-family:var(--serif);font-style:italic}
+.ph::after{
+  content:"\02C6";position:absolute;left:50%;top:0;line-height:1;
+  transform:translateX(-40%);font-style:normal;
 }
 
-/* inline maths */
-.f{display:inline-flex;align-items:center;gap:.34em;font-family:var(--serif);font-size:1.06rem;line-height:1}
-.f .op{color:var(--muted)}
-.f sup{font-size:.62em;vertical-align:super}
-.frac{display:inline-flex;flex-direction:column;align-items:center;font-size:.82em;line-height:1.25}
-.frac .num{padding:0 .3em}
-.frac .den{padding:0 .3em;border-top:1.15px solid currentColor;width:100%;text-align:center}
-.sqrt{display:inline-flex;align-items:stretch}
-.sqrt .radical{font-size:1.55em;line-height:.92;transform:translateY(-.02em)}
-.sqrt .rad{border-top:1.15px solid currentColor;padding:.2em .3em 0 .1em;display:flex;align-items:center;margin-top:.14em}
+/* square root */
+.rt{display:inline-flex;align-items:stretch;line-height:1;margin-left:.14em}
+.rt-sign{flex:none;width:.6em;overflow:visible}
+.rt-sign path{
+  fill:none;stroke:currentColor;stroke-width:1.25;
+  vector-effect:non-scaling-stroke;stroke-linecap:round;
+}
+.rt-body{
+  display:flex;align-items:center;
+  border-top:1.25px solid currentColor;padding:.26em .32em 0 .16em;
+}
+
+/* fraction */
+.fr{display:inline-flex;flex-direction:column;align-items:center;line-height:1.16;font-size:.96em}
+.fr-n{padding:0 .32em .1em}
+.fr-d{align-self:stretch;text-align:center;padding:.1em .32em 0;border-top:1.25px solid currentColor}
+
+/* brackets */
+.par{flex:none;align-self:stretch;width:.46em;overflow:visible}
+.par path{
+  fill:none;stroke:currentColor;stroke-width:1.35;
+  vector-effect:non-scaling-stroke;stroke-linecap:round;
+}
+.par.l{margin-right:.16em}
+.par.r{margin-left:.16em}
 
 /* ---------------- layout ---------------- */
 .grid{
@@ -97,12 +135,12 @@ button{font-family:inherit}
 .field{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:14px 0 6px}
 .field label{font-size:.875rem;color:var(--ink-2);font-weight:520}
 .field label .sym{font-family:var(--serif);font-size:1.02rem;color:var(--ink)}
-.num{
+input.num{
   width:74px;padding:6px 8px;text-align:right;
   font-family:var(--mono);font-size:.86rem;font-variant-numeric:tabular-nums;
   color:var(--ink);background:#fbfcfe;border:1px solid var(--line);border-radius:8px;
 }
-.num:focus{outline:2px solid rgba(43,124,176,.35);outline-offset:1px;border-color:var(--blue)}
+input.num:focus{outline:2px solid rgba(43,124,176,.35);outline-offset:1px;border-color:var(--blue)}
 .suffixed{position:relative;display:inline-flex;align-items:center}
 .suffixed .num{width:82px;padding-right:22px}
 .suffixed .suffix{position:absolute;right:8px;font-size:.78rem;color:var(--muted);pointer-events:none}
@@ -209,8 +247,9 @@ button{font-family:inherit}
   transition:left .28s cubic-bezier(.4,0,.2,1);
 }
 .pline .plabel{
-  position:absolute;top:-1px;left:0;transform:translateX(-50%);
-  font-family:var(--serif);font-size:1.22rem;color:var(--blue-d);line-height:1;
+  position:absolute;top:-2px;left:0;transform:translateX(-50%);
+  font-family:var(--serif);font-size:1.22rem;color:var(--blue-d);line-height:1.1;
+  background:rgba(255,255,255,.92);padding:0 5px;border-radius:4px;
 }
 .pline .pvalue{
   position:absolute;top:20px;left:0;transform:translateX(-50%);
@@ -330,10 +369,10 @@ button{font-family:inherit}
 .row + .row{margin-top:3px}
 .row:nth-child(even){background:#fafcfe}
 .row .id{color:var(--muted)}
-.row .ph{color:var(--crim);font-weight:600}
+.row .pv{color:var(--crim);font-weight:600}
 .row .ci{text-align:right;color:var(--ink);letter-spacing:-.01em}
 .row.miss{border-left-color:var(--miss);background:var(--miss-l)}
-.row.miss .ph{color:var(--miss-d)}
+.row.miss .pv{color:var(--miss-d)}
 .row.miss .ci{color:var(--miss-d)}
 .row.new{animation:rowIn .4s cubic-bezier(.2,.7,.3,1) both}
 @keyframes rowIn{from{opacity:0;transform:translateX(-10px);background:var(--blue-l)}to{opacity:1;transform:none}}
@@ -342,13 +381,13 @@ button{font-family:inherit}
 /* ---------------- working overlay ---------------- */
 .overlay{
   position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:20px;
-  background:rgba(16,33,50,.34);backdrop-filter:blur(3px);
+  background:rgba(16,33,50,.34);backdrop-filter:blur(3px);cursor:pointer;
   animation:fade .18s ease both;
 }
 .overlay[hidden]{display:none}
 @keyframes fade{from{opacity:0}to{opacity:1}}
 .sheet{
-  width:min(452px,100%);max-height:calc(100vh - 32px);overflow-y:auto;background:var(--card);border-radius:18px;
+  width:min(580px,100%);max-height:calc(100vh - 32px);overflow-y:auto;background:var(--card);border-radius:18px;
   box-shadow:0 24px 70px -20px rgba(10,26,40,.55), 0 2px 6px rgba(10,26,40,.16);
   overflow:hidden;animation:sheetIn .26s cubic-bezier(.2,.8,.3,1) both;
 }
@@ -359,11 +398,16 @@ button{font-family:inherit}
 }
 .sheet-head h3{margin:0;font-size:.94rem;font-weight:620}
 .sheet-head h3 span{font-family:var(--mono);color:var(--blue-d)}
-.steps{padding:6px 18px 20px;min-height:318px}
+.steps{padding:6px 18px 18px;min-height:318px}
+.sheet-foot{
+  padding:11px 18px 12px;border-top:1px solid var(--line-2);background:#fbfcfe;
+  font-size:.78rem;color:var(--muted);text-align:center;opacity:0;transition:opacity .32s;
+}
+.sheet-foot.on{opacity:1}
 
 .step{display:flex;gap:12px;padding:11px 0 10px;border-bottom:1px dashed var(--line-2);opacity:0}
 .step:last-child{border-bottom:0}
-.step.on{animation:stepIn .34s cubic-bezier(.2,.7,.3,1) both}
+.step.on{animation:stepIn .42s cubic-bezier(.2,.7,.3,1) both}
 @keyframes stepIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
 .step-n{
   flex:none;width:20px;height:20px;margin-top:2px;border-radius:50%;
@@ -373,12 +417,36 @@ button{font-family:inherit}
 .step-b{flex:1;min-width:0}
 .step-t{font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:650}
 .step-m{
-  margin-top:4px;font-family:var(--serif);font-size:.95rem;color:var(--ink);line-height:1.55;
+  margin-top:4px;font-family:var(--serif);font-size:.95rem;color:var(--ink);line-height:1.45;
   display:flex;flex-wrap:wrap;align-items:center;gap:.3em;
 }
 .step-m .v{font-family:var(--mono);font-size:.84rem;font-variant-numeric:tabular-nums}
 .step-m .big{font-family:var(--mono);font-size:1.02rem;font-weight:650;color:var(--blue-d);white-space:nowrap}
 .step-m .neg{color:var(--miss-d)}
+
+/* the formula, then the same formula with this sample's numbers in it */
+.plate{
+  width:100%;margin:3px 0 12px;padding:12px 10px;border-radius:11px;
+  background:linear-gradient(180deg,#f8fafc,#eff5fa);border:1px solid #e3ecf4;
+  display:flex;justify-content:center;overflow-x:auto;
+}
+.eps{width:100%;display:flex;flex-direction:column;gap:11px}
+.ep{display:flex;align-items:center;gap:.2em}
+.ep-tag{
+  flex:none;width:46px;font-family:var(--font);font-size:.63rem;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+}
+.ep .mth{font-size:.95rem}
+.ep-out{
+  font-family:var(--mono);font-size:.98rem;font-weight:650;color:var(--blue-d);
+  font-variant-numeric:tabular-nums;
+}
+.answer{
+  width:100%;display:flex;justify-content:center;align-items:center;
+  margin:14px 0 2px;color:var(--blue-d);
+}
+.answer .mth{font-size:1.2rem;font-weight:600}
+.answer .mn{font-size:.92em;font-weight:650}
 
 .dots{display:flex;flex-wrap:wrap;gap:2.5px;margin-top:8px}
 .dots i{width:7px;height:7px;border-radius:2px;background:#dbe4ec;animation:dIn .26s both}
@@ -407,6 +475,27 @@ button{font-family:inherit}
 .verdict.in{background:var(--blue-l);color:var(--blue-d)}
 .verdict.out{background:var(--miss-l);color:var(--miss-d)}
 .verdict .mark{font-size:1rem}
+
+/* keep the whole working on screen on a short laptop/projector display */
+@media (max-height:830px){
+  .sheet-head{padding:10px 16px}
+  .sheet-head h3{font-size:.9rem}
+  .steps{padding:2px 16px 10px;min-height:0}
+  .step{padding:7px 0 6px}
+  .plate{margin:2px 0 8px;padding:8px}
+  .plate .mth{font-size:.96rem}
+  .eps{gap:8px}
+  .ep .mth{font-size:.87rem}
+  .ep-out{font-size:.92rem}
+  .answer{margin:8px 0 0}
+  .answer .mth{font-size:1.06rem}
+  .mini{height:34px;margin-top:7px}
+  .mini .mlab{font-size:.6rem}
+  .verdict{margin-top:8px;padding:6px 10px;font-size:.8rem}
+  .dots{gap:2px;margin-top:6px}
+  .dots i{width:6px;height:6px}
+  .sheet-foot{padding:8px 16px 9px;font-size:.74rem}
+}
 
 /* ---------------- responsive ---------------- */
 @media (min-width:1240px) and (min-height:720px){

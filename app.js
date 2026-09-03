@@ -97,7 +97,7 @@ const el = {
   pNum: $('#p-num'), pRange: $('#p-range'),
   nNum: $('#n-num'), nRange: $('#n-range'),
   cNum: $('#c-num'), cRange: $('#c-range'), cChips: $('#c-chips'),
-  zOut: $('#zstar-out'), seOut: $('#se-out'),
+  zOut: $('#zstar-out'), chip: $('#formula-chip'),
   btnOne: $('#btn-one'), btnMany: $('#btn-many'), btnClear: $('#btn-clear'),
   batchNum: $('#batch-num'), batchLabel: $('#batch-label'), batchChips: $('#batch-chips'),
   showWork: $('#show-work'),
@@ -109,7 +109,8 @@ const el = {
   statRate: $('#stat-rate'), meterFill: $('#meter-fill'), meterMark: $('#meter-mark'),
   meterMarkLabel: $('#meter-mark-label'), statNominal: $('#stat-nominal'),
   list: $('#list'), listCount: $('#list-count'),
-  overlay: $('#overlay'), sheetId: $('#sheet-id'), steps: $('#steps'), btnSkip: $('#btn-skip')
+  overlay: $('#overlay'), sheetId: $('#sheet-id'), steps: $('#steps'),
+  btnSkip: $('#btn-skip'), sheetFoot: $('#sheet-foot')
 };
 
 const fx = (v, d) => (Number.isFinite(v) ? v.toFixed(d) : '—');
@@ -158,7 +159,6 @@ function markChips(box, key, value) {
 function afterSettingChange() {
   clearSamples();
   el.zOut.textContent = fx(Math.abs(invNorm(tailArea(state.C))), 4);
-  el.seOut.textContent = fx(Math.sqrt(state.p * (1 - state.p) / state.n), 4);
   el.pvalue.textContent = fx(state.p, state.p * 1000 % 10 === 0 ? 2 : 3);
   el.statNominal.textContent = fx(state.C, state.C % 1 === 0 ? 0 : 1) + '%';
   el.meterMarkLabel.textContent = fx(state.C, state.C % 1 === 0 ? 0 : 1) + '%';
@@ -365,7 +365,7 @@ function renderList(opt) {
     const s = state.samples[i];
     html += '<div class="row' + (s.ok ? '' : ' miss') + (s.id === opt.flashId ? ' new' : '') + '">' +
             '<span class="id">#' + s.id + '</span>' +
-            '<span class="ph">' + fx(s.phat, 3) + '</span>' +
+            '<span class="pv">' + fx(s.phat, 3) + '</span>' +
             '<span class="ci">(' + fx(s.lo, 4) + ', ' + fx(s.hi, 4) + ')</span></div>';
   }
   if (start > 0) html += '<p class="list-more">+ ' + start + ' earlier samples</p>';
@@ -374,10 +374,54 @@ function renderList(opt) {
 }
 
 /* ============================================================
+   MATHS TYPESETTING
+   The radical and brackets are SVG paths stretched to the height of whatever
+   they wrap, so they fit the expression instead of being a fixed-size glyph.
+   Pass a {phat, z, n} of strings to substitute numbers, or nothing for the
+   symbolic form — the page header and the working then read identically.
+   ============================================================ */
+const RT_SVG = '<svg class="rt-sign" viewBox="0 0 12 30" preserveAspectRatio="none" aria-hidden="true">' +
+               '<path d="M0.4 17.6 L3.2 17.6 L6.6 28.8 L12 0"/></svg>';
+const PAR_L = '<svg class="par l" viewBox="0 0 8 40" preserveAspectRatio="none" aria-hidden="true">' +
+              '<path d="M6.6 0.7 C1.9 12 1.9 28 6.6 39.3"/></svg>';
+const PAR_R = '<svg class="par r" viewBox="0 0 8 40" preserveAspectRatio="none" aria-hidden="true">' +
+              '<path d="M1.4 0.7 C6.1 12 6.1 28 1.4 39.3"/></svg>';
+const PHAT = '<span class="ph">p</span>';
+
+const num = (t) => '<span class="mn">' + t + '</span>';
+const frac = (a, b) => '<span class="fr"><span class="fr-n">' + a + '</span>' +
+                       '<span class="fr-d">' + b + '</span></span>';
+const sqrt = (inner) => '<span class="rt">' + RT_SVG + '<span class="rt-body">' + inner + '</span></span>';
+
+/* one end of the interval:  p-hat  -/+  z sqrt( p-hat(1 - p-hat) / n ) */
+function endpoint(sign, v) {
+  const p = v ? num(v.phat) : PHAT;
+  const z = v ? num(v.z) : '<i>z</i>';
+  const n = v ? num(v.n) : '<i>n</i>';
+  return '<span class="mth">' + p + '<span class="sg">' + sign + '</span>' + z +
+         sqrt(frac(p + '(1&minus;' + p + ')', n)) + '</span>';
+}
+
+/* ( lower , upper ) */
+function ciFormula(v) {
+  return '<span class="mth">' + PAR_L + endpoint('&minus;', v) +
+         '<span class="cm">,</span>' + endpoint('+', v) + PAR_R + '</span>';
+}
+
+/* ( 0.3815 , 0.6585 ) */
+function ciResult(lo, hi) {
+  return '<span class="mth">' + PAR_L + num(lo) + '<span class="cm">,</span>' +
+         num(hi) + PAR_R + '</span>';
+}
+
+/* ============================================================
    STEP-BY-STEP WORKING
    ============================================================ */
+const STEP_MS = 800;      // pause between steps of the working
+
 let timers = [];
 let pending = null;
+let allShown = false;     // every step revealed — the next click closes the sheet
 
 function clearTimers() { timers.forEach(clearTimeout); timers = []; }
 
@@ -396,6 +440,8 @@ function showWorking(s) {
   const cStr = fx(C / 100, C % 1 === 0 ? 2 : 3);
   const pStr = fx(p, p * 1000 % 10 === 0 ? 2 : 3);
   const dec = fx(C, C % 1 === 0 ? 0 : 1);
+  const phatStr = fx(s.phat, 4), zStr = fx(s.zStar, 4);
+  const loStr = fx(s.lo, 4), hiStr = fx(s.hi, 4);
 
   /* 1. the sample */
   let dots = '';
@@ -413,29 +459,21 @@ function showWorking(s) {
     }
     dots += '</div>';
   }
-  const step1 = '<span><i>n</i> = <span class="v">' + n + '</span> people sampled from a population with <i>p</i> = <span class="v">' + pStr + '</span></span>' +
+  const step1 = '<span><i>n</i> = <span class="v">' + n + '</span> people sampled from a population with ' +
+                '<i>p</i> = <span class="v">' + pStr + '</span></span>' +
                 '<div style="width:100%">Number of successes: <span class="big">X = ' + s.x + '</span>' + dots + '</div>';
 
   /* 2. sample proportion */
-  const step2 = '<span class="hat">p&#770;</span> = <span class="v">X / n</span> = <span class="v">' + s.x + ' / ' + n +
-                '</span> = <span class="big">' + fx(s.phat, 4) + '</span>';
+  const step2 = '<span class="mth">' + PHAT + '<span class="eqs">=</span>' + frac('<i>X</i>', '<i>n</i>') +
+                '<span class="eqs">=</span>' + frac(num(s.x), num(n)) +
+                '<span class="eqs">=</span><span class="big">' + phatStr + '</span></span>';
 
   /* 3. critical value */
-  const step3 = '<span><i>z</i> = invNorm( (1 &minus; ' + cStr + ') / 2, 0, 1 ) = invNorm(<span class="v">' +
+  const step3 = '<span><i>z</i> = invNorm( (1 &minus; <span class="v">' + cStr + '</span>) / 2, 0, 1 ) = invNorm(<span class="v">' +
                 fx(tailArea(C), 4) + '</span>) = <span class="big neg">' + fx(s.z, 4) + '</span></span>' +
-                '<span style="width:100%">so <i>z</i><sup>&lowast;</sup> = |<i>z</i>| = <span class="big">' + fx(s.zStar, 4) + '</span></span>';
+                '<span style="width:100%">take its magnitude: <i>z</i> = <span class="big">' + zStr + '</span></span>';
 
-  /* 4. standard error */
-  const step4 = '<span class="f"><span class="sqrt"><span class="radical">&radic;</span><span class="rad">' +
-                '<span class="frac"><span class="num">p&#770;(1&minus;p&#770;)</span><span class="den">n</span></span>' +
-                '</span></span></span> = <span class="v">&radic;( ' + fx(s.phat, 4) + ' &times; ' + fx(1 - s.phat, 4) +
-                ' / ' + n + ' )</span> = <span class="big">' + fx(s.se, 5) + '</span>';
-
-  /* 5. margin of error */
-  const step5 = '<i>z</i><sup>&lowast;</sup> &times; SE = <span class="v">' + fx(s.zStar, 4) + ' &times; ' + fx(s.se, 5) +
-                '</span> = <span class="big">' + fx(s.moe, 5) + '</span>';
-
-  /* 6. the interval */
+  /* 4. straight into the interval formula */
   const mLo = Math.min(s.lo, p), mHi = Math.max(s.hi, p);
   const mPad = Math.max((mHi - mLo) * 0.16, 0.01);
   const dLo = mLo - mPad, dSpan = (mHi + mPad) - dLo;
@@ -447,38 +485,62 @@ function showWorking(s) {
       '<div class="mcap" style="left:calc(' + at(s.hi) + ' - 1.5px)"></div>' +
       '<div class="mdot" style="left:' + at(s.phat) + '"></div>' +
       '<div class="mp" style="left:' + at(p) + '"></div>' +
-      '<div class="mlab" style="left:' + at(s.lo) + '">' + fx(s.lo, 4) + '</div>' +
-      '<div class="mlab" style="left:' + at(s.hi) + '">' + fx(s.hi, 4) + '</div>' +
+      '<div class="mlab" style="left:' + at(s.lo) + '">' + loStr + '</div>' +
+      '<div class="mlab" style="left:' + at(s.hi) + '">' + hiStr + '</div>' +
       '</div>' +
       '<div class="verdict ' + (s.ok ? 'in' : 'out') + '"><span class="mark">' + (s.ok ? '&#10003;' : '&#10007;') +
       '</span>' + (s.ok ? 'This interval captures ' : 'This interval misses ') + 'p = ' + pStr +
-      (s.ok ? '' : ' — it happens about ' + fx(100 - C, C % 1 === 0 ? 0 : 1) + '% of the time') + '</div>';
+      (s.ok ? '' : ' \u2014 it happens about ' + fx(100 - C, C % 1 === 0 ? 0 : 1) + '% of the time') + '</div>';
 
-  const step6 = '<span style="width:100%"><span class="hat">p&#770;</span> &plusmn; <i>z</i><sup>&lowast;</sup>&middot;SE = <span class="v">' +
-                fx(s.phat, 4) + ' &plusmn; ' + fx(s.moe, 5) + '</span> &rarr; <span class="big">(' +
-                fx(s.lo, 4) + ', ' + fx(s.hi, 4) + ')</span></span>' + mini;
+  const subs = { phat: phatStr, z: zStr, n: String(n) };
+  const step4 = '<div class="plate">' + ciFormula() + '</div>' +
+      '<div class="eps">' +
+        '<div class="ep"><span class="ep-tag">Lower</span>' + endpoint('&minus;', subs) +
+          '<span class="mth"><span class="eqs">=</span></span><span class="ep-out">' + loStr + '</span></div>' +
+        '<div class="ep"><span class="ep-tag">Upper</span>' + endpoint('+', subs) +
+          '<span class="mth"><span class="eqs">=</span></span><span class="ep-out">' + hiStr + '</span></div>' +
+      '</div>' +
+      '<div class="answer">' + ciResult(loStr, hiStr) + '</div>' + mini;
 
   el.steps.innerHTML =
       stepHTML(1, 'Take the sample', step1) +
       stepHTML(2, 'Sample proportion', step2) +
       stepHTML(3, 'Critical value for ' + dec + '%', step3) +
-      stepHTML(4, 'Standard error', step4) +
-      stepHTML(5, 'Margin of error', step5) +
-      stepHTML(6, dec + '% confidence interval', step6);
+      stepHTML(4, dec + '% confidence interval', step4);
 
+  allShown = false;
+  el.btnSkip.textContent = 'Skip \u2192';
+  el.sheetFoot.classList.remove('on');
   el.overlay.hidden = false;
+
   const steps = Array.from(el.steps.querySelectorAll('.step'));
   clearTimers();
   steps.forEach((node, i) => {
-    timers.push(setTimeout(() => node.classList.add('on'), 60 + i * 460));
+    timers.push(setTimeout(() => {
+      node.classList.add('on');
+      keepInView(node);
+      if (i === steps.length - 1) markAllShown();
+    }, 80 + i * STEP_MS));
   });
-  timers.push(setTimeout(finishWorking, 60 + steps.length * 460 + 1250));
+}
+
+/* on a short screen the sheet scrolls; follow the working as it appears */
+function keepInView(node) {
+  if (node.scrollIntoView) node.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+/* the sheet waits for a click from here on — it never closes by itself */
+function markAllShown() {
+  allShown = true;
+  el.btnSkip.textContent = 'Close \u2192';
+  el.sheetFoot.classList.add('on');
 }
 
 function revealAll() {
   clearTimers();
   el.steps.querySelectorAll('.step').forEach((n) => n.classList.add('on'));
-  timers.push(setTimeout(finishWorking, 1100));
+  keepInView(el.steps.lastElementChild);
+  markAllShown();
 }
 
 function finishWorking() {
@@ -492,8 +554,11 @@ function finishWorking() {
   }
 }
 
-el.btnSkip.addEventListener('click', revealAll);
-el.overlay.addEventListener('click', (e) => { if (e.target === el.overlay) finishWorking(); });
+/* one handler for the whole screen, including the Skip / Close button that
+   sits inside it: first click finishes the working, the next one closes. */
+el.overlay.addEventListener('click', () => {
+  if (allShown) finishWorking(); else revealAll();
+});
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && !el.overlay.hidden) finishWorking();
 });
@@ -507,5 +572,6 @@ window.addEventListener('resize', () => {
   rt = setTimeout(() => renderPlot({}), 120);
 });
 
+el.chip.innerHTML = ciFormula();
 setP(0.6); setN(50); setC(95); setBatch(50);
 renderAll();

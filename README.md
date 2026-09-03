@@ -8,8 +8,15 @@ resulting intervals capture it.
 Every interval on screen is the one-proportion *z* interval
 
 ```
-p̂ ± z* · √( p̂(1 − p̂) / n )        z* = |invNorm((1 − C) / 2, 0, 1)|
+( p̂ − z √( p̂(1−p̂) / n ) ,  p̂ + z √( p̂(1−p̂) / n ) )
+
+z = | invNorm( (1 − C) / 2, 0, 1 ) |
 ```
+
+Taking one sample steps through the working: the number of successes, `p̂ = X/n`,
+`z` from `invNorm`, then the formula with those numbers substituted straight into
+it to give each bound. The sheet then waits — the next click anywhere adds the
+interval to the plot.
 
 ## Using it
 
@@ -46,7 +53,10 @@ app.js        maths, sampling, rendering, the step-by-step animation
 ```
 
 Implementation notes: `invNorm` is Acklam's rational approximation of the
-inverse normal CDF (error < 1.2e-9), so `z*` matches a graphics calculator.
+inverse normal CDF (error < 1.2e-9), so `z` matches a graphics calculator.
+The formulas are typeset by `app.js` itself — the radical and brackets are SVG
+paths stretched to whatever they wrap, so the page header and the working both
+render from one function and stay identical.
 Samples are exact binomial draws. The plot draws a fair random subset of at
 most 50 intervals via reservoir sampling — the statistics always use every
 sample taken — and the side list keeps the most recent 400 rows.
